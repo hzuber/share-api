@@ -2,9 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
-const { CLIENT_ORIGIN } = require('./config')
+const { CLIENT_ORIGIN, NODE_ENV } = require('./config')
 const helmet = require('helmet');
-const { NODE_ENV } = require('./config');
+const shareRouter = require('./shareRouter')
 
 const app = express()
 
@@ -15,6 +15,21 @@ app.use(helmet());
 app.use(cors({
     origin: CLIENT_ORIGIN
 }));
+
+app.use(function validateBearerToken(req, res, next) {
+    const apiToken = process.env.API_TOKEN
+    const authToken = req.get('Authorization')
+    console.log(apiToken)
+    console.log(authToken)
+  
+    if (!authToken || authToken.split(' ')[1] !== apiToken) {
+        logger.error(`Unauthorized request to path: ${req.path}`)
+        return res.status(401).json({ error: 'Unauthorized request' })
+    }
+    next()
+  })
+
+app.use('/api/share-my-stuff', shareRouter)
 
 app.get('/', (req, res) => {
     res.send('Hello, world!')
