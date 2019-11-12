@@ -16,7 +16,13 @@ app.use(cors({
     origin: CLIENT_ORIGIN
 }));
 
-app.use(function validateBearerToken(req, res, next) {
+app.use('/api/share-my-stuff', shareRouter)
+
+app.get('/', (req, res) => {
+    res.send('Hello, world!')
+})
+
+/*app.use(function validateBearerToken(req, res, next) {
     const apiToken = process.env.API_TOKEN
     const authToken = req.get('Authorization')
     console.log(apiToken)
@@ -27,15 +33,9 @@ app.use(function validateBearerToken(req, res, next) {
         return res.status(401).json({ error: 'Unauthorized request' })
     }
     next()
-  })
+  })*/
 
-app.use('/api/share-my-stuff', shareRouter)
-
-app.get('/', (req, res) => {
-    res.send('Hello, world!')
-})
-
-app.use(function errorHandler(error, req, res, next) {
+/*app.use(function errorHandler(error, req, res, next) {
     let response
     if (NODE_ENV === 'production') {
         response = { error: {message: 'server error' } }
@@ -44,6 +44,6 @@ app.use(function errorHandler(error, req, res, next) {
         response = {message: error.message, error}
     }
     res.status(500).json(response)
-})
+})*/
 
 module.exports = app;

@@ -21,5 +21,7 @@ const itemsStore = [
 shareRouter
     .route('/')
     .get((req, res, next) => {
-        res.json(itemsStore)
+        return res.json(itemsStore)
     })
+
+module.exports = shareRouter;
