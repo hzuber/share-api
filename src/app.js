@@ -5,7 +5,7 @@ const cors = require('cors');
 const { CLIENT_ORIGIN, NODE_ENV } = require('./config')
 const helmet = require('helmet');
 const shareRouter = require('./shareRouter')
-const UsersRouter = require('./users/users-router')
+const UsersRouter = require('../users/users-router')
 
 const app = express()
 

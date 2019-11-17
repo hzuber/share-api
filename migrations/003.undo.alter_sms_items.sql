@@ -1,2 +1,0 @@
-ALTER TABLE sms_items DROP COLUMN IF EXISTS type;
-DROP TYPE IF EXISTS item_type;

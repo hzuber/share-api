@@ -7,7 +7,3 @@ CREATE TYPE item_type AS ENUM (
     'Toys'
 );
 
-
-ALTER TABLE sms_items
-    ADD COLUMN
-        type item_type;
