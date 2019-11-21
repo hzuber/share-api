@@ -4,10 +4,10 @@ function makeItemsArray() {
         {
             id: 1,
             name: 'First item',
-            author: null,
+            author: "",
             type: 'Household',
             borrowed: false,
-            borrowed_by: null,
+            borrowed_by: "",
             borrowed_since: null,
             owned_by: 1,
             description: "Lorem ipsum dolor"
@@ -26,10 +26,10 @@ function makeItemsArray() {
         {
             id: 3,
             name: 'Third item',
-            author: null,
+            author: "",
             type: 'Electronics',
             borrowed: false,
-            borrowed_by: null,
+            borrowed_by: "",
             borrowed_since: null,
             owned_by: 3,
             description: "Lorem ipsum dolor"
@@ -37,10 +37,10 @@ function makeItemsArray() {
         {
             id: 4,
             name: 'Fourth item',
-            author: null,
+            author: "",
             type: 'Toys',
             borrowed: false,
-            borrowed_by: null,
+            borrowed_by: "",
             borrowed_since: null,
             owned_by: 4,
             description: "Lorem ipsum dolor"
@@ -49,24 +49,23 @@ function makeItemsArray() {
 }
 
 function makeMaliciousItems() {
-    const maliciousItem = [{
-        id: 1,
-        type: 'Garden',
-        name: 'Naughty naughty very naughty <script>alert("xss");</script>',
-        description: `Bad image <img src="https://url.to.file.which/does-not.exist" onerror="alert(document.cookie);">. But not <strong>all</strong> bad.`,
+    const maliciousItemArr = [{
+        type: "Garden",
+        name: "Naughty naughty very naughty <script>alert('xss');</script>",
+        description: "Bad image <img src='https://url.to.file.which/does-not.exist' onerror='alert(document.cookie);'>. But not <strong>all</strong> bad.",
         borrowed: true,
-        author: null,
+        author: "",
         borrowed_by: "a person",
         borrowed_since: "2019-06-19T12:59:00.000Z",
         owned_by: 911
     }]
       expectedItem = [{
-        ...maliciousItem,
-        name: 'Naughty naughty very naughty &lt;script&gt;alert(\"xss\");&lt;/script&gt;',
+        ...maliciousItemArr[0],
+        name: 'Naughty naughty very naughty &lt;script&gt;alert(\'xss\');&lt;/script&gt;',
         description: `Bad image <img src="https://url.to.file.which/does-not.exist">. But not <strong>all</strong> bad.`
     }]
       return {
-        maliciousItem,
+        maliciousItemArr,
         expectedItem,
     }
 }

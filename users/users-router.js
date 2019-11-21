@@ -136,6 +136,7 @@ UsersRouter
                 }
                 res.user = user
                 next()
+                return user
             })
             .catch(next)
     })

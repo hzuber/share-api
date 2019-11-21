@@ -6,6 +6,7 @@ const { CLIENT_ORIGIN, NODE_ENV } = require('./config')
 const helmet = require('helmet');
 const shareRouter = require('./shareRouter')
 const UsersRouter = require('../users/users-router')
+const ItemsRouter = require('../items/items-router')
 
 const app = express()
 
@@ -19,6 +20,7 @@ app.use(cors({
 
 app.use('/api/share-my-stuff', shareRouter)
 app.use('/api/users', UsersRouter)
+app.use('/api/items', ItemsRouter)
 
 app.get('/', (req, res) => {
     res.send('Hello, world!')

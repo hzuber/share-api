@@ -300,7 +300,7 @@ describe('Users Endpoints', () => {
         })
         context(`Given an XSS attack item`, () => {
             const { maliciousItem, expectedItem } = makeMaliciousItems()
-            const { maliciousUser, expectedUser } = makeMaliciousUsers()
+            const { maliciousUser } = makeMaliciousUsers()
 
             beforeEach('insert malicious user and item', () => {
                 return db
