@@ -2,6 +2,7 @@ const path = require('path')
 const express = require('express')
 const xss = require('xss')
 const UsersService = require('./users-service')
+const { requireAuth } = require('../auth/middleware/basic-auth')
 
 const UsersRouter = express.Router()
 const jsonParser = express.json()
@@ -64,6 +65,7 @@ UsersRouter
 
 UsersRouter
     .route('/:user_id')
+    .all(requireAuth)
     .all((req, res, next) => {
         UsersService.getById(
             req.app.get('db'),
@@ -121,6 +123,7 @@ UsersRouter
 
 UsersRouter
     .route('/:user_id/items') 
+    .all(requireAuth)
     .all((req, res, next) => {
         UsersService.getById(
             req.app.get('db'),

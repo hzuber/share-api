@@ -1,10 +1,9 @@
 const { expect } = require('chai')
 const knex = require('knex')
 const app = require('../src/app')
-const { makeUsersArray, makeMaliciousUsers } = require('./users.fixtures')
-const { makeItemsArray, makeMaliciousItems } = require('./items.fixtures')
-const testItems = makeItemsArray();
-const testUsers = makeUsersArray();
+const helpers = require('./test-helpers')
+const { testUsers, testItems } = helpers.makeItemsFixtures()
+
 
 describe('Items Endpoints', () => {
     let db
@@ -17,27 +16,72 @@ describe('Items Endpoints', () => {
         app.set('db', db)
     })
 
+    function makeAuthHeader(user) {
+        const token = Buffer.from(`${user.email}:${user.password}`).toString('base64')
+        return `Basic ${token}`
+    }
+
     before('clean the table', () => db.raw('TRUNCATE sms_users, sms_items RESTART IDENTITY CASCADE'))
     afterEach('cleanup', () => db.raw('TRUNCATE sms_users, sms_items RESTART IDENTITY CASCADE'))
     after('disconnect from db', () => db.destroy())
 
-    describe(`Get /api/items`, () => {
-        context('Given there are items in the database', () => {
-            beforeEach('insert items', () => {
-                return db   
-                    .into('sms_users')
-                    .insert(testUsers)
-                    .then(() => {
-                        return db
-                            .into('sms_items')
-                            .insert(testItems)
-                    })
+    describe(`Protected endpoints`, () => {
+        beforeEach('insert items', () =>
+            helpers.seedItemsTables(
+                db,
+                testUsers,
+                testItems
+            )
+        )
+    
+        describe(`GET /api/items/:item_id`, () => {
+            it(`responds with 401 'Missing basic token' when no basic token`, () => {
+                return supertest(app)
+                    .get(`/api/items/123`)
+                    .expect(401, { error: `Missing basic token` })
             })
 
+            it(`responds 401 'Unauthorized request' when no credentials in token`, () => {
+                const userNoCreds = { email: '', password: '' }
+                return supertest(app)
+                    .get(`/api/items/123`)
+                    .set('Authorization', makeAuthHeader(userNoCreds))
+                    .expect(401, { error: `Unauthorized request` })
+            })
+
+            it(`responds 401 'Unauthorized request' when invalid user`, () => {
+                const userInvalidCreds = { email: 'user-not', password: 'existy' }
+                return supertest(app)
+                    .get(`/api/items/1`)
+                    .set('Authorization', makeAuthHeader(userInvalidCreds))
+                    .expect(401, { error: `Unauthorized request` })
+            })
+
+            it(`responds 401 'Unauthorized request' when invalid password`, () => {
+                const userInvalidPass = { email: testUsers[0].email, password: 'wrong' }
+                return supertest(app)
+                    .get(`/api/items/1`)
+                    .set('Authorization', makeAuthHeader(userInvalidPass))
+                    .expect(401, { error: `Unauthorized request` })
+            })
+        })
+    })
+
+    describe(`Get /api/items`, () => {
+        context('Given there are items in the database', () => {
+            beforeEach('insert items', () => 
+                helpers.seedItemsTables(
+                    db,
+                    testUsers,
+                    testItems
+                )
+            )
+
             it('responds with 200 and all of the items', () => {
+                const expectedItems = testItems.map(item => helpers.makeExpectedItem(item))
                 return supertest(app)
                     .get('/api/items')
-                    .expect(200, testItems)
+                    .expect(200, expectedItems)
             })
         })
 
@@ -50,39 +94,107 @@ describe('Items Endpoints', () => {
         })
 
         context('Given an XSS attack item', () => {
-            const {maliciousUser} = makeMaliciousUsers();
-            const { maliciousItemArr, expectedItem } = makeMaliciousItems();
-            const maliciousItem = maliciousItemArr[0]
-            beforeEach('insert malicious items', () => {
-                return db   
-                    .into('sms_users')
-                    .insert(maliciousUser)
-                    .then(() => {
-                        return db
-                            .into('sms_items')
-                            .insert(maliciousItem)
-                    })
-            })
+            const testUser = helpers.makeUsersArray()[1]
+            const {
+                maliciousItem,
+                expectedItem,
+            } = helpers.makeMaliciousItem(testUser)
+
+            beforeEach('insert malicious item', () => {
+                return helpers.seedMaliciousItem(
+                  db,
+                  testUser,
+                  maliciousItem,
+                )
+              })
 
             it('removes XSS attack content', () => {
                 return supertest(app)
                     .get('/api/items')
                     .expect(200)
                     .expect(res => {
-                        expect(res.body.name).to.eql(expectedItem.name)
-                        expect(res.body.description).to.eql(expectedItem.description)
+                        expect(res.body[0].name).to.eql(expectedItem.name)
+                        expect(res.body[0].description).to.eql(expectedItem.description)
                     })
             })
         })
     })
 
+    describe(`GET /api/items/:item_id`, () => {
+        context(`Given no items`, () => {
+            beforeEach(() => 
+            helpers.seedUsers(db, testUsers)
+            )
+                it(`responds with 404`, () => {
+                    const itemId = 123456
+                    return supertest(app)
+                    .get(`/api/items/${itemId}`)
+                    .set('Authorization', makeAuthHeader(testUsers[0]))
+                    .expect(404, { error: 
+                        {message:
+                            `Item doesn't exist` }
+                    })
+                })
+        })
+    
+        context('Given there are items in the database', () => {
+          beforeEach('insert items', () =>
+            helpers.seedItemsTables(
+              db,
+              testUsers,
+              testItems,
+            )
+          )
+    
+          it('responds with 200 and the specified item', () => {
+            const itemId = 2
+            const testItem = testItems[itemId - 1]
+            const expectedItem = helpers.makeExpectedItem(testItem)
+    
+            return supertest(app)
+              .get(`/api/items/${itemId}`)
+              .set('Authorization', makeAuthHeader(testUsers[0]))
+              .expect(200, expectedItem)
+          })
+        })
+    
+        context(`Given an XSS attack item`, () => {
+          const testUser = helpers.makeUsersArray()[1]
+          const {
+            maliciousItem,
+            expectedItem,
+          } = helpers.makeMaliciousItem(testUser)
+    
+          beforeEach('insert malicious item', () => {
+            return helpers.seedMaliciousItem(
+              db,
+              testUser,
+              maliciousItem,
+            )
+          })
+    
+          it('removes XSS attack content', () => {
+            return supertest(app)
+              .get(`/api/items/${maliciousItem.id}`)
+              .set('Authorization', makeAuthHeader(testUser))
+              .expect(200)
+              .expect(res => {
+                expect(res.body.name).to.eql(expectedItem.name)
+                expect(res.body.description).to.eql(expectedItem.description)
+              })
+          })
+        })
+      })
+
     describe('POST /api/items', () => {
         context('Given an item to insert', () => {
-            beforeEach('insert users', () => {
-                return db   
-                    .into('sms_users')
-                    .insert(testUsers)
-            })
+            beforeEach('insert items', () =>
+            helpers.seedItemsTables(
+              db,
+              testUsers,
+              testItems,
+            )
+          )
             it(`creates a new item, responds with 201 and the specified item`, () => {
                 const newItem = {
                     name: "test new item",
@@ -96,6 +208,7 @@ describe('Items Endpoints', () => {
                 }
                 return supertest(app)
                     .post('/api/items')
+                    .set('Authorization', makeAuthHeader(testUsers[0]))
                     .send(newItem)
                     .expect(201)
                     .expect(res => {
@@ -123,6 +236,7 @@ describe('Items Endpoints', () => {
                     delete newItem[field]
                     return supertest(app)
                         .post('/api/items')
+                        .set('Authorization', makeAuthHeader(testUsers[0]))
                         .send(newItem)
                         .expect(400,{
                             error: { message:`You are missing '${field}' in request body.`}
@@ -132,24 +246,26 @@ describe('Items Endpoints', () => {
         })
 
         context(`Given an XSS attack item`, () => {
-            const { maliciousUser } = makeMaliciousUsers()
-            const { maliciousItemArr, expectedItem } = makeMaliciousItems()
-            const maliciousItem = maliciousItemArr[0]
-
-            beforeEach('insert malicious user', () => {
-                return db
-                    .into('sms_users')
-                    .insert(maliciousUser)
-            })
+            const testUser = testUsers[0]
+            const {maliciousItem, expectedItem} = helpers.makeMaliciousItem(testUser)
+    
+          beforeEach('insert items', () => {
+            return helpers.seedItemsTables(
+              db,
+              testUsers,
+              testItems,
+            )
+          })
 
             it('removes XSS attack content', () => {
                 return supertest(app)
                     .post(`/api/items`)
+                    .set('Authorization', makeAuthHeader(testUsers[0]))
                     .send(maliciousItem)
                     .expect(201)
                     .expect(res => {
-                        expect(res.body.name).to.eql(expectedItem[0].name)
-                        expect(res.body.description).to.eql(expectedItem[0].description)
+                        expect(res.body.name).to.eql(expectedItem.name)
+                        expect(res.body.description).to.eql(expectedItem.description)
                     })
             })
         })
@@ -157,24 +273,22 @@ describe('Items Endpoints', () => {
 
     describe(`DELETE /api/items/:item_id`, () => {
         context("Given there are items in the database", () => {
-            const testItems = makeItemsArray();
 
-            beforeEach('insert items', () => {
-                return db   
-                    .into('sms_users')
-                    .insert(testUsers)
-                    .then(() => {
-                        return db
-                            .into('sms_items')
-                            .insert(testItems)
-                    })
-            })
+            beforeEach('insert items', () =>
+            helpers.seedItemsTables(
+              db,
+              testUsers,
+              testItems,
+            )
+          )
 
             it('responds with a 204 and removes the item', () => {
                 const idToRemove = 2
-                const expectedItems = testItems.filter(item => item.id !== idToRemove)
+                const expectedItemList = testItems.filter(item => item.id !== idToRemove)
+                const expectedItems = expectedItemList.map(item => helpers.makeExpectedItem(item))
                 return supertest(app)
                     .delete(`/api/items/${idToRemove}`)
+                    .set('Authorization', makeAuthHeader(testUsers[0]))
                     .expect(204)
                     .then(res => 
                         supertest(app)
@@ -190,21 +304,19 @@ describe('Items Endpoints', () => {
                 const itemId = 123456
                 return supertest(app)
                     .patch(`/api/items/${itemId}`)
+                    .set('Authorization', makeAuthHeader(testUsers[0]))
                     .expect(404, {error: {message: `Item doesn't exist`}})
             })
         })
 
         context(`Given there are items in the database`, () => {
-            beforeEach('insert items', () => {
-                return db   
-                    .into('sms_users')
-                    .insert(testUsers)
-                    .then(() => {
-                        return db
-                            .into('sms_items')
-                            .insert(testItems)
-                    })
-            })
+            beforeEach('insert items', () =>
+            helpers.seedItemsTables(
+              db,
+              testUsers,
+              testItems,
+            )
+          )
 
             it(`responds with 204 and updates the article`, () => {
                 const idToUpdate = 2
@@ -219,6 +331,7 @@ describe('Items Endpoints', () => {
                 }
                 return supertest(app)
                     .patch(`/api/items/${idToUpdate}`)
+                    .set('Authorization', makeAuthHeader(testUsers[0]))
                     .send(updateItem)
                     .expect(204)
                     .then(res => {
@@ -232,6 +345,7 @@ describe('Items Endpoints', () => {
                 const idToUpdate = 2
                 return supertest(app)
                     .patch(`/api/items/${idToUpdate}`)
+                    .set('Authorization', makeAuthHeader(testUsers[0]))
                     .send({ irrelevantField: 'foo' })
                     .expect(400, {
                         error: {
@@ -252,6 +366,7 @@ describe('Items Endpoints', () => {
 
                 return supertest(app)
                     .patch(`/api/items/${idToUpdate}`)
+                    .set('Authorization', makeAuthHeader(testUsers[0]))
                     .send({
                         ...updateItem,
                         fieldToIgnore: 'should not be in GET request'

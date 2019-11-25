@@ -7,6 +7,7 @@ const helmet = require('helmet');
 const shareRouter = require('./shareRouter')
 const UsersRouter = require('../users/users-router')
 const ItemsRouter = require('../items/items-router')
+const AuthRouter = require('../auth/auth-router')
 
 const app = express()
 

@@ -1,10 +1,9 @@
 const { expect } = require('chai')
 const knex = require('knex')
 const app = require('../src/app')
-const { makeUsersArray, makeMaliciousUsers } = require('./users.fixtures')
-const { makeItemsArray, makeMaliciousItems } = require('./items.fixtures')
-const testUsers = makeUsersArray();
-const testItems = makeItemsArray();
+const helpers = require('./test-helpers')
+const { makeMaliciousUser, makeItemsFixtures, makeMaliciousItem, makeExpectedUser, makeExpectedItem } = require('./test-helpers')
+const {testUsers, testItems} = makeItemsFixtures();
 
 describe('Users Endpoints', () => {
     let db
@@ -17,12 +16,51 @@ describe('Users Endpoints', () => {
         app.set('db', db)
     })
 
+    function makeAuthHeader(user) {
+        const token = Buffer.from(`${user.email}:${user.password}`).toString('base64')
+        return `Basic ${token}`
+    }
+
     before('clean the table', () => db.raw('TRUNCATE sms_users, sms_items RESTART IDENTITY CASCADE'))
     afterEach('cleanup', () => db.raw('TRUNCATE sms_users, sms_items RESTART IDENTITY CASCADE'))
     after('disconnect from db', () => db.destroy())
 
+    describe(`Protected endpoints`, () => {
+        beforeEach('insert users', () =>
+            helpers.seedUsers(
+                db,
+                testUsers
+            )
+        )
+    
+        describe(`GET /api/users/:user_id`, () => {
+            it(`responds with 401 'Missing basic token' when no basic token`, () => {
+                return supertest(app)
+                    .get(`/api/users/123`)
+                    .expect(401, { error: `Missing basic token` })
+            })
+
+            it(`responds 401 'Unauthorized request' when no credentials in token`, () => {
+                const userNoCreds = { email: '', password: '' }
+                return supertest(app)
+                    .get(`/api/users/123`)
+                    .set('Authorization', makeAuthHeader(userNoCreds))
+                    .expect(401, { error: `Unauthorized request` })
+            })
+
+            it(`responds 401 'Unauthorized request' when invalid user`, () => {
+                const userInvalidCreds = { user_name: 'user-not', password: 'existy' }
+                return supertest(app)
+                    .get(`/api/users/1`)
+                    .set('Authorization', makeAuthHeader(userInvalidCreds))
+                    .expect(401, { error: `Unauthorized request` })
+            })
+        })
+    })
+
     describe(`Get /api/users`, () => {
         context('Given there are users in the database', () => {
+            const expectedUsers = testUsers.map(user => makeExpectedUser(user))
             beforeEach('insert users', () => {
                 return db
                     .into('sms_users')
@@ -32,7 +70,7 @@ describe('Users Endpoints', () => {
             it('responds with 200 and all of the users', () => {
                 return supertest(app)
                     .get('/api/users')
-                    .expect(200, testUsers)
+                    .expect(200, expectedUsers)
             })
         })
 
@@ -45,7 +83,7 @@ describe('Users Endpoints', () => {
         })
 
         context('Given an XSS attack user', () => {
-            const { maliciousUser, expectedUser } = makeMaliciousUsers();
+            const { maliciousUser, expectedUser } = makeMaliciousUser();
 
             beforeEach('insert malicious user', () => {
                 return db
@@ -75,9 +113,11 @@ describe('Users Endpoints', () => {
 
             it('GET /users/:user_id responds with 200 and the user', () => {
                 const userId = 2
-                const expectedUser = testUsers[userId-1]
+                const user = testUsers[userId-1]
+                const expectedUser = makeExpectedUser(user)
                 return supertest(app)
                     .get(`/api/users/${userId}`)
+                    .set('Authorization', makeAuthHeader(user))
                     .expect(200, expectedUser)
             })
         })
@@ -92,7 +132,7 @@ describe('Users Endpoints', () => {
         })
 
         context('Given an XSS attack user', () => {
-            const { maliciousUser, expectedUser } = makeMaliciousUsers();
+            const { maliciousUser, expectedUser } = makeMaliciousUser();
 
             beforeEach('insert malicious user', () => {
                 return db
@@ -103,6 +143,7 @@ describe('Users Endpoints', () => {
             it('removes XSS attack content', () => {
                 return supertest(app)
                     .get(`/api/users/${maliciousUser.id}`)
+                    .set('Authorization', makeAuthHeader(maliciousUser.id))
                     .expect(200)
                     .expect(res => {
                         expect(res.body.password).to.eql(expectedUser.password)
@@ -160,7 +201,7 @@ describe('Users Endpoints', () => {
         })
 
         context(`Given an XSS attack user`, () => {
-            const { maliciousUser, expectedUser } = makeMaliciousUsers()
+            const { maliciousUser, expectedUser } = makeMaliciousUser()
 
             it('removes XSS attack content', () => {
                 return supertest(app)
@@ -177,7 +218,6 @@ describe('Users Endpoints', () => {
 
     describe(`DELETE /api/users/:user_id`, () => {
         context("Given there are users in the database", () => {
-            const testUsers = makeUsersArray()
 
             beforeEach('insert users', () => {
                 return db
@@ -187,9 +227,11 @@ describe('Users Endpoints', () => {
 
             it('responds with a 204 and removes the user', () => {
                 const idToRemove = 2
-                const expectedUsers = testUsers.filter(user => user.id !== idToRemove)
+                const expectedUserList = testUsers.filter(user => user.id !== idToRemove)
+                const expectedUsers = expectedUserList.map(user => makeExpectedUser(user))
                 return supertest(app)
                     .delete(`/api/users/${idToRemove}`)
+                    .set('Authorization', makeAuthHeader(idToRemove))
                     .expect(204)
                     .then(res => 
                         supertest(app)
@@ -205,6 +247,7 @@ describe('Users Endpoints', () => {
                 const userId = 123456
                 return supertest(app)
                     .patch(`/api/users/${userId}`)
+                    .set('Authorization', makeAuthHeader(userId))
                     .expect(404, {error: {message: `User doesn't exist`}})
             })
         })
@@ -229,6 +272,7 @@ describe('Users Endpoints', () => {
                 }
                 return supertest(app)
                     .patch(`/api/users/${idToUpdate}`)
+                    .set('Authorization', makeAuthHeader(idToUpdate))
                     .send(updateUser)
                     .expect(204)
                     .then(res => {
@@ -242,6 +286,7 @@ describe('Users Endpoints', () => {
                 const idToUpdate = 2
                 return supertest(app)
                     .patch(`/api/users/${idToUpdate}`)
+                    .set('Authorization', makeAuthHeader(idToUpdate))
                     .send({ irrelevantField: 'foo' })
                     .expect(400, {
                         error: {
@@ -262,6 +307,7 @@ describe('Users Endpoints', () => {
 
                 return supertest(app)
                     .patch(`/api/users/${idToUpdate}`)
+                    .set('Authorization', makeAuthHeader(idToUpdate))
                     .send({
                         ...updateUser,
                         fieldToIgnore: 'should not be in GET request'
@@ -292,20 +338,22 @@ describe('Users Endpoints', () => {
 
             it('GET /users/:user_id/items responds with 200 and the items', () => {
                 const userId = 2
-                const expectedItem = [testItems[userId - 1]]
+                const testItem = testItems[userId - 1]
+                const expectedItem = [makeExpectedItem(testItem)]
                 return supertest(app)
                     .get(`/api/users/${userId}/items`)
+                    .set('Authorization', makeAuthHeader(userId))
                     .expect(200, expectedItem)
             })
         })
         context(`Given an XSS attack item`, () => {
-            const { maliciousItem, expectedItem } = makeMaliciousItems()
-            const { maliciousUser } = makeMaliciousUsers()
+            const testUser = testUsers[1]
+            const { maliciousItem, expectedItem } = makeMaliciousItem(testUser)
 
             beforeEach('insert malicious user and item', () => {
                 return db
                     .into('sms_users')
-                    .insert(maliciousUser)
+                    .insert(testUsers)
                     .then(() => {
                         return db
                             .into('sms_items')
@@ -315,11 +363,12 @@ describe('Users Endpoints', () => {
 
             it('removes XSS attack content', () => {
                 return supertest(app)
-                    .get(`/api/users/911/items`)
+                    .get(`/api/users/${testUser.id}/items`)
+                    .set('Authorization', makeAuthHeader(testUser.id))
                     .expect(200)
                     .expect(res => {
-                        expect(res.body.name).to.eql(expectedItem.name)
-+                       expect(res.body.description).to.eql(expectedItem.description)
+                        expect(res.body[0].name).to.eql(expectedItem.name)
++                       expect(res.body[0].description).to.eql(expectedItem.description)
                     })
             })
         })
