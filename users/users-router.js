@@ -9,7 +9,6 @@ const sanitizeUser = (user) => ({
     id: user.id,
     name: xss(user.name),
     password: xss(user.password),
-    pw_hint: xss(user.pw_hint),
     email: xss(user.email),
     number: xss(user.number)
 })
@@ -36,7 +35,7 @@ UsersRouter
             .catch(next)
     })
     .post(jsonParser, (req, res, next) => {
-        const {name, password, email, number, pw_hint} = req.body;
+        const {name, password, email, number } = req.body;
         const newUser = {name, password, email};
 
         for(const [key, value] of Object.entries(newUser)){
@@ -49,7 +48,6 @@ UsersRouter
             }
         }
         newUser.number = number;
-        newUser.pw_hint = pw_hint
         UsersService.addUser(
             req.app.get('db'),
             newUser
@@ -96,8 +94,8 @@ UsersRouter
         .catch(next)
     })
     .patch(jsonParser, (req, res, next) => {
-        const { name, password, pw_hint, email, number } = req.body
-        const userToUpdate = { name, password, pw_hint, email, number }
+        const { name, password, email, number } = req.body
+        const userToUpdate = { name, password, email, number }
 
         const numberOfValues = Object.values(userToUpdate).filter(Boolean).length
         if (numberOfValues === 0) {

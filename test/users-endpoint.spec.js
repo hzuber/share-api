@@ -59,7 +59,6 @@ describe('Users Endpoints', () => {
                     .expect(200)
                     .expect(res => {
                         expect(res.body[0].password).to.eql(expectedUser.password)
-                        expect(res.body[0].pw_hint).to.eql(expectedUser.pw_hint)
                     })
             })
         })
@@ -106,7 +105,6 @@ describe('Users Endpoints', () => {
                     .expect(200)
                     .expect(res => {
                         expect(res.body.password).to.eql(expectedUser.password)
-                        expect(res.body.pw_hint).to.eql(expectedUser.pw_hint)
                     })
             })
         })
@@ -117,7 +115,6 @@ describe('Users Endpoints', () => {
             const newUser = {
                 name: 'test new user',
                 password: "test password",
-                pw_hint: "test hint",
                 email: "test@email.com",
                 number: "1234567890"
             }
@@ -128,7 +125,6 @@ describe('Users Endpoints', () => {
                 .expect(res => {
                     expect(res.body.name).to.eql(newUser.name)
                     expect(res.body.password).to.eql(newUser.password)
-                    expect(res.body.pw_hint).to.eql(newUser.pw_hint)
                     expect(res.body.email).to.eql(newUser.email)
                     expect(res.body.number).to.eql(newUser.number)
                     expect(res.body).to.have.property('id')
@@ -169,7 +165,6 @@ describe('Users Endpoints', () => {
                     .expect(201)
                     .expect(res => {
                         expect(res.body.password).to.eql(expectedUser.password)
-                        expect(res.body.pw_hint).to.eql(expectedUser.pw_hint)
                     })
             })
         })
