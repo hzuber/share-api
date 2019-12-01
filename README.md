@@ -1,26 +1,12 @@
-# Express Boilerplate!
+# Share API
+###### https://fathomless-refuge-14037.herokuapp.com
 
-This is a boilerplate project used for starting new projects!
+The api for the Share My Stuff app was created with Node JS. It uses a database with tables for the users and the items.
+The items use the primary key of the users app as a foreign key to keep track of whos the items belong
+to. 
 
-## Set up
+Items can be pulled either by email or user id. To post an item a name must be suppplied, as well as what type of 
+item it is and whether it is borrowed or not. However, the Share My Stuff app always supplies an empty string
+as the name, so it isn't functionally required. 
 
-Complete the following steps to start a new project (NEW-PROJECT-NAME):
-
-1. Clone this repository to your local machine `git clone BOILERPLATE-URL NEW-PROJECTS-NAME`
-2. `cd` into the cloned repository
-3. Make a fresh start of the git history for this project with `rm -rf .git && git init`
-4. Install the node dependencies `npm install`
-5. Move the example Environment file to `.env` that will be ignored by git and read by the express server `mv example.env .env`
-6. Edit the contents of the `package.json` to use NEW-PROJECT-NAME instead of `"name": "express-boilerplate",`
-
-## Scripts
-
-Start the application `npm start`
-
-Start nodemon for the application `npm run dev`
-
-Run the tests `npm test`
-
-## Deploying
-
-When your new project is ready for deployment, add a new Heroku application with `heroku create`. This will make a new git remote called "heroku" and you can then `npm run deploy` which will push to this remote's master branch.# share-api
+There is currently no authentication. 
