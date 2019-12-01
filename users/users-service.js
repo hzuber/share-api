@@ -26,7 +26,6 @@ const UsersService = {
             .first()
     },
     getItemsByUserId(knex, user_id){
-        console.log("user id is ", user_id)
         return knex
             .from('sms_items')
             .select('*')
