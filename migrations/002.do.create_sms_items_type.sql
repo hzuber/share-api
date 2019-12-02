@@ -4,6 +4,7 @@ CREATE TYPE item_type AS ENUM (
     'Book',
     'Garden',
     'Tools',
-    'Toys'
+    'Toys',
+    'Other'
 );
 

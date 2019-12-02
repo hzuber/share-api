@@ -5,8 +5,28 @@ The api for the Share My Stuff app was created with Node JS. It uses a database 
 The items use the primary key of the users app as a foreign key to keep track of whos the items belong
 to. The api uses Express, Morgan, CORS and Knex. For testing I used supertest and mocha. 
 
-Items can be pulled either by email or user id. To post an item a name must be suppplied, as well as what type of 
-item it is and whether it is borrowed or not. However, the Share My Stuff app always supplies an empty string
-as the name, so it isn't functionally required. 
-
 There is currently no authentication. 
+
+## API Documentation
+
+The Share API is organized around REST. It accepts standard GET, POST, PATCH and DELETE requests for users and items. The API returns JSON encoded responses.
+
+All API calls begin with: https://fathomless-refuge-14037.herokuapp.com
+
+### Users
+
+GET /users
+GET /users/:user_id
+GET /users/:user_id/items
+POST /users
+PATCH /users/:user_id
+DELETE /users/:user_id
+
+
+### Items
+
+GET /items
+GET /items/item_id
+POST /items
+PATCH /items/:item_id
+DELETE /items/:item_id
