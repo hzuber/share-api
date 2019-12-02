@@ -11,7 +11,7 @@ There is currently no authentication.
 
 The Share API is organized around REST. It accepts standard GET, POST, PATCH and DELETE requests for users and items. The API returns JSON encoded responses.
 
-All API calls begin with: https://fathomless-refuge-14037.herokuapp.com
+All API calls begin with: https://fathomless-refuge-14037.herokuapp.com/api/
 
 ### Users
 
