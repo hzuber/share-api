@@ -35,6 +35,7 @@ UsersRouter
             .catch(next)
     })
     .post(jsonParser, (req, res, next) => {
+        //required params
         const {name, password, email, number } = req.body;
         const newUser = {name, password, email};
 
@@ -54,6 +55,7 @@ UsersRouter
         )
         .then(user => {
             res.status(201)
+                //return user with location
                 .location(path.posix.join(req.originalUrl + `/${user.id}`))
                 .json(sanitizeUser(user))
         })
@@ -63,6 +65,7 @@ UsersRouter
 UsersRouter
     .route('/:user_id')
     .all((req, res, next) => {
+        //before any calls for specific user, check that user exists
         UsersService.getById(
             req.app.get('db'),
             req.params.user_id

@@ -51,6 +51,7 @@ ItemsRouter
         )
         .then(item => {
             res.status(201)
+            //return item and location
                 .location(path.posix.join(req.originalUrl + `/${item.id}`))
                 .json(sanitizeItem(item))
         })
@@ -59,6 +60,7 @@ ItemsRouter
 
 ItemsRouter
     .route('/:item_id')
+    //before any API calls for a specific item, check that it exists
     .all((req, res, next) => {
         ItemsService.getById(
             req.app.get('db'),
@@ -95,6 +97,7 @@ ItemsRouter
         const itemToUpdate = { name, type, author, borrowed, borrowed_by, borrowed_since, description, owned_by }
 
         const numberOfValues = Object.values(itemToUpdate).filter(Boolean).length
+        //make sure there are changes
         if (numberOfValues === 0) {
             return res.status(400).json({
                 error: {
